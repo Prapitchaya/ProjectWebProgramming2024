@@ -1,21 +1,20 @@
 import { useState, useEffect } from 'react';
-import Layout from '../components/Layout'; // Import the Layout component
+import Layout from '../components/Layout';
 import { RecipeCard } from '../components/RecipeCard';
-import { z } from 'zod'; // Import Zod for validation
+import { z } from 'zod'; 
 
 interface Recipe {
   id: number;
   title: string;
   description: string;
   author: {
-    id: number; // Make sure author has an id field
+    id: number; 
     name: string;
   };
 }
 
-// Define Zod schema for validating form inputs
 const recipeSchema = z.object({
-  title: z.string().min(1, "Title is required").max(100, "Title is too long"),
+  title: z.string().min(1, "Title is required").max(50, "Title is too long"),
   description: z.string().min(10, "Description must be at least 10 characters").max(500, "Description is too long"),
 });
 
@@ -139,7 +138,7 @@ export default function Homepage() {
 
   return (
     <Layout>
-      <h2 className="text-3xl font-bold text-center mb-6">Post a New Recipe</h2>
+      
 
       {role === 'VISITOR' && (
         <p className="text-center">You are a visitor. You can only view posts.</p>
@@ -147,6 +146,7 @@ export default function Homepage() {
 
       {role !== 'VISITOR' && (
         <div className="mb-6">
+          <h2 className="text-3xl font-bold text-center mb-6">Post a New Recipe</h2>
           <form onSubmit={handleAddRecipe}>
             <input
               type="text"
