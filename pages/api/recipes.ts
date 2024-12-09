@@ -19,18 +19,18 @@ export default async function handler(req, res) {
         });
         res.status(200).json(recipes);
       } catch (error) {
+        console.error('Error fetching recipes:', error);
         res.status(500).json({ error: 'Failed to fetch recipes' });
       }
       break;
 
     case 'POST':
       try {
-        // Assuming that 'userId' is passed from the frontend (e.g., from session or auth)
         const { title, description, content, userId } = req.body;
 
-        // Check if the userId is provided and valid
-        if (!userId) {
-          return res.status(400).json({ error: 'User ID is required' });
+        // Validate inputs
+        if (!title || !description || !content || !userId) {
+          return res.status(400).json({ error: 'Title, description, content, and userId are required' });
         }
 
         // Create the new recipe and associate it with the author (user)
@@ -45,6 +45,7 @@ export default async function handler(req, res) {
 
         res.status(201).json(newRecipe);
       } catch (error) {
+        console.error('Error creating recipe:', error);
         res.status(500).json({ error: 'Failed to create recipe' });
       }
       break;
@@ -52,12 +53,18 @@ export default async function handler(req, res) {
     case 'PUT':
       try {
         const { id, title, description, content } = req.body;
+
+        if (!id || !title || !description || !content) {
+          return res.status(400).json({ error: 'ID, title, description, and content are required' });
+        }
+
         const updatedRecipe = await prisma.recipe.update({
           where: { id: Number(id) },
           data: { title, description, content },
         });
         res.status(200).json(updatedRecipe);
       } catch (error) {
+        console.error('Error updating recipe:', error);
         res.status(500).json({ error: 'Failed to update recipe' });
       }
       break;
@@ -65,9 +72,15 @@ export default async function handler(req, res) {
     case 'DELETE':
       try {
         const { id } = req.body;
+
+        if (!id) {
+          return res.status(400).json({ error: 'Recipe ID is required' });
+        }
+
         await prisma.recipe.delete({ where: { id: Number(id) } });
         res.status(200).json({ message: 'Recipe deleted successfully' });
       } catch (error) {
+        console.error('Error deleting recipe:', error);
         res.status(500).json({ error: 'Failed to delete recipe' });
       }
       break;

@@ -1,14 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-
 const EXTERNAL_API_URL = 'https://www.themealdb.com/api/json/v1/1/search.php?s=';
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
+      const { searchQuery } = req.body; // Allow search query input
+
+      // Construct the full API URL with the search query
+      const url = `${EXTERNAL_API_URL}${searchQuery || ''}`;
+
       // Fetch data from the external API
-      const response = await fetch(EXTERNAL_API_URL);
+      const response = await fetch(url);
       const data = await response.json();
 
       // Check if meals are found

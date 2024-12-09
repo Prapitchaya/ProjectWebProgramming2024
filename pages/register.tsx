@@ -39,7 +39,7 @@ export default function Register() {
         {success && <p className="text-green-500 text-center mb-4">{success}</p>}
 
         <div className="mb-6">
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name (Optional)</label>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name</label>
           <input
             id="name"
             type="text"

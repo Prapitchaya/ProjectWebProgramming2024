@@ -1,16 +1,23 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout'; // Import the Layout component
 import { RecipeCard } from '../components/RecipeCard';
+import { z } from 'zod'; // Import Zod for validation
 
 interface Recipe {
   id: number;
   title: string;
   description: string;
   author: {
+    id: number; // Make sure author has an id field
     name: string;
   };
 }
+
+// Define Zod schema for validating form inputs
+const recipeSchema = z.object({
+  title: z.string().min(1, "Title is required").max(100, "Title is too long"),
+  description: z.string().min(10, "Description must be at least 10 characters").max(500, "Description is too long"),
+});
 
 export default function Homepage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -18,12 +25,40 @@ export default function Homepage() {
   const [newRecipeDescription, setNewRecipeDescription] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [role, setRole] = useState<string>('user');
+  const [role, setRole] = useState<string>('VISITOR'); // Default to VISITOR
+  const [userId, setUserId] = useState<number | null>(null); // Store the userId
 
   useEffect(() => {
-    const userRole = localStorage.getItem('role') || 'user';
-    setRole(userRole);
+    const userIdFromLocalStorage = localStorage.getItem('userId');
+    console.log("User ID from localStorage:", userIdFromLocalStorage);
 
+    if (userIdFromLocalStorage) {
+      const userIdParsed = parseInt(userIdFromLocalStorage);
+      setUserId(userIdParsed);
+
+      // Fetch the role from the backend (via an API call)
+      const fetchUserRole = async () => {
+        try {
+          const res = await fetch(`/api/getUserRole?userId=${userIdParsed}`);
+          const data = await res.json();
+
+          if (data.role) {
+            setRole(data.role);
+          } else {
+            setRole('VISITOR'); // Fallback to 'VISITOR' if no role found
+          }
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+          setRole('VISITOR'); // Fallback in case of an error
+        }
+      };
+
+      fetchUserRole();
+    } else {
+      setRole('VISITOR'); // If no userId is found, set role to 'VISITOR'
+    }
+
+    // Fetch recipes
     const fetchRecipes = async () => {
       setIsLoading(true);
       setError(null);
@@ -48,8 +83,16 @@ export default function Homepage() {
 
   const handleAddRecipe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRecipeTitle || !newRecipeDescription) {
-      alert('Please fill in both the title and description.');
+
+    // Validate form data using Zod schema
+    const result = recipeSchema.safeParse({
+      title: newRecipeTitle,
+      description: newRecipeDescription,
+    });
+
+    if (!result.success) {
+      // Display validation errors
+      alert(`Error: ${result.error.errors.map(e => e.message).join(", ")}`);
       return;
     }
 
@@ -57,7 +100,10 @@ export default function Homepage() {
       const res = await fetch('/api/recipes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newRecipeTitle, description: newRecipeDescription }),
+        body: JSON.stringify({
+          title: newRecipeTitle,
+          description: newRecipeDescription,
+        }),
       });
 
       if (res.ok) {
@@ -95,29 +141,35 @@ export default function Homepage() {
     <Layout>
       <h2 className="text-3xl font-bold text-center mb-6">Post a New Recipe</h2>
 
-      <div className="mb-6">
-        <form onSubmit={handleAddRecipe}>
-          <input
-            type="text"
-            placeholder="Recipe Title"
-            value={newRecipeTitle}
-            onChange={(e) => setNewRecipeTitle(e.target.value)}
-            className="w-full p-3 mb-4 border-2 border-purple-500 rounded-md"
-          />
-          <textarea
-            placeholder="Recipe Description"
-            value={newRecipeDescription}
-            onChange={(e) => setNewRecipeDescription(e.target.value)}
-            className="w-full p-3 mb-4 border-2 border-purple-500 rounded-md"
-          />
-          <button
-            type="submit"
-            className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700"
-          >
-            Post
-          </button>
-        </form>
-      </div>
+      {role === 'VISITOR' && (
+        <p className="text-center">You are a visitor. You can only view posts.</p>
+      )}
+
+      {role !== 'VISITOR' && (
+        <div className="mb-6">
+          <form onSubmit={handleAddRecipe}>
+            <input
+              type="text"
+              placeholder="Recipe Title"
+              value={newRecipeTitle}
+              onChange={(e) => setNewRecipeTitle(e.target.value)}
+              className="w-full p-3 mb-4 border-2 border-purple-500 rounded-md"
+            />
+            <textarea
+              placeholder="Recipe Description"
+              value={newRecipeDescription}
+              onChange={(e) => setNewRecipeDescription(e.target.value)}
+              className="w-full p-3 mb-4 border-2 border-purple-500 rounded-md"
+            />
+            <button
+              type="submit"
+              className="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700"
+            >
+              Post
+            </button>
+          </form>
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-center">Loading recipes...</p>
@@ -129,14 +181,22 @@ export default function Homepage() {
             <p className="text-center">No recipes found.</p>
           ) : (
             recipes.map((recipe) => (
-              <div key={recipe.id} className="border p-4 rounded shadow-lg bg-white">
+              <div key={recipe.id} className="border p-4 rounded shadow-lg bg-white relative">
                 <RecipeCard recipe={recipe} />
-                {role === 'admin' && (
+                {role === 'ADMIN' && (
                   <button
                     onClick={() => handleDeleteRecipe(recipe.id)}
                     className="absolute top-2 right-2 bg-red-600 text-white py-1 px-3 rounded-lg"
                   >
                     Delete
+                  </button>
+                )}
+                {role === 'AUTHOR' && userId === recipe.author.id && (
+                  <button
+                    onClick={() => handleDeleteRecipe(recipe.id)}
+                    className="absolute top-2 right-2 bg-red-600 text-white py-1 px-3 rounded-lg"
+                  >
+                    Delete Your Post
                   </button>
                 )}
               </div>
